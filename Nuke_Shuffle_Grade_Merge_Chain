@@ -1,0 +1,60 @@
+import nuke
+
+def create_parallel_chain():
+    count_str = nuke.getInput("How many levels?", "3")
+    if not count_str: return
+    count = int(count_str)
+
+    # Initialize both trackers with the currently selected node
+    try:
+        start_node = nuke.selectedNode()
+        start_node.setSelected(False)
+    except:
+        start_node = None
+
+    # Track the end of both chains independently
+    previous_node_a = start_node
+    previous_node_b = start_node
+
+    # Set starting coordinates for layout (if no node selected, start at 0,0)
+    start_x = start_node.xpos() if start_node else 0
+    start_y = start_node.ypos() if start_node else 0
+
+    for i in range(count):
+        # --- ROW SETUP ---
+        # Calculate Y position for this row to keep things tidy
+        row_y = start_y + (i * 300) + 150
+
+        # --- A STREAM (Left Side) ---
+        # We connect this to the PREVIOUS SHUFFLE A (or start node)
+        # Note: label shows it receives from the previous link
+        shuffle_a = nuke.nodes.Shuffle2(label=f"[value in1]", postage_stamp=True, inputs=[previous_node_a])
+        grade_a   = nuke.nodes.Grade(inputs=[shuffle_a])
+        
+        # Position A nodes to the LEFT
+        shuffle_a.setXYpos(start_x - 400, row_y)
+        grade_a.setXYpos(start_x - 200, row_y + 100)
+
+        # --- B STREAM (Right Side) ---
+        # We connect this to the PREVIOUS MERGE (or start node)
+        shuffle_b = nuke.nodes.Shuffle2(label="[value in1]", inputs=[previous_node_b])
+        grade_b   = nuke.nodes.Grade(inputs=[shuffle_b])
+
+        # Position B nodes to the RIGHT
+        shuffle_b.setXYpos(start_x, row_y)
+        grade_b.setXYpos(start_x, row_y + 50)
+
+        # --- MERGE ---
+        # Connect Grade B (0) and Grade A (1)
+        merge = nuke.nodes.Merge2(operation="plus", inputs=[grade_b, grade_a], label=f"Merge_{i+1}")
+        merge.setXYpos(start_x, row_y + 150)
+
+        # --- UPDATE TRACKERS ---
+        # 1. The next B loop connects to this Merge (accumulating the result)
+        previous_node_b = merge
+        
+        # 2. The next A loop connects to this Shuffle A (passing the source down)
+        # This creates the daisy-chain on the left side you asked for.
+        previous_node_a = shuffle_a
+
+create_parallel_chain()
