@@ -1,0 +1,46 @@
+import nuke
+
+def create_backdrop_from_label():
+    try:
+        # Get the currently selected node
+        # We use selectedNode() which returns the one active node or throws an error
+        sel_node = nuke.selectedNode()
+    except ValueError:
+        nuke.message("Please select a node first.")
+        return
+
+    # Get the text from the selected node's label
+    # .evaluate() is safer than .value() in case there are TCL expressions in the label
+    full_text = sel_node['label'].evaluate()
+
+    #trim to last "/"
+    label_text = full_text.split('/')[-1]
+    
+    # Fallback: If the label is empty, let the user know (or you could swap this to use the node name)
+    if not label_text:
+        print("Warning: The selected node has no label text.")
+    
+    # Create the Backdrop Node
+    bd = nuke.nodes.BackdropNode()
+    
+    # Assign the text to the Backdrop
+    bd['label'].setValue(label_text)
+    
+    # Set visual properties
+    bd['note_font_size'].setValue(42) # Make text large enough to read
+    
+    # Position the Backdrop near the node
+    # We offset x and y slightly (-20) so the backdrop surrounds the node comfortably
+    bd.setXYpos(sel_node.xpos() - 20, sel_node.ypos() - 80)
+    
+    # Set default dimensions 
+    # (You mentioned you will adjust these manually, but we need a base size to make it visible)
+    bd['bdwidth'].setValue(520)
+    bd['bdheight'].setValue(280)
+    
+    # Optional: Select the new backdrop for immediate resizing
+    sel_node.setSelected(False)
+    bd.setSelected(True)
+
+# Run the function
+create_backdrop_from_label()
